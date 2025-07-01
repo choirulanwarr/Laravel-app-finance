@@ -16,12 +16,29 @@ class TransaksiController extends Controller
         $time = $currentTime->toDateTimeString();
         $month = Carbon::createFromFormat('Y-m-d H:i:s', $time)->month;
         $year = Carbon::createFromFormat('Y-m-d H:i:s', $time)->year;
-        $transaksi = Transaksi::join('kategoris','kategoris.id_ket','=','transaksis.kategori_id')
-            ->whereMonth('transaksis.tanggal','=',$month)
-            ->whereYear('transaksis.tanggal','=',$year)
-            ->get(['transaksis.id_trans','transaksis.tanggal', 'kategoris.nama_ket', 'kategoris.jns_ket', 'transaksis.nominal','transaksis.deskripsi']);
-        $saldo = DB::table('transaksis')
-            ->sum('transaksis.nominal');
+        $transaksi = DB::table('transaksis')
+            ->join('kategoris', 'kategoris.id_ket', '=', 'transaksis.kategori_id')
+            ->whereMonth('transaksis.tanggal', '=', $month)
+            ->whereYear('transaksis.tanggal', '=', $year)
+            ->select(
+                'transaksis.id_trans',
+                'transaksis.tanggal',
+                'transaksis.nominal',
+                'transaksis.deskripsi',
+                'kategoris.nama_ket',
+                'kategoris.jns_ket'
+            )
+            ->get();
+
+        $total = DB::table('transaksis')
+            ->join('kategoris', 'kategoris.id_ket', '=', 'transaksis.kategori_id')
+            ->whereMonth('transaksis.tanggal', '=', $month)
+            ->whereYear('transaksis.tanggal', '=', $year)
+            ->select('kategoris.jns_ket', DB::raw('SUM(transaksis.nominal) as total'))
+            ->groupBy('kategoris.jns_ket')
+            ->pluck('total', 'jns_ket');
+            
+        $saldo = $total['Pemasukan'] - $total['Pengeluaran'];
         
         return view('transaksi.index', compact('transaksi','saldo'));
     }
